@@ -1,7 +1,5 @@
 package com.proton.update.activity;
 
-import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
@@ -23,7 +21,6 @@ import com.proton.update.utils.Utils;
 import com.scwang.smartrefresh.layout.SmartRefreshLayout;
 import com.scwang.smartrefresh.layout.listener.OnLoadmoreListener;
 import com.scwang.smartrefresh.layout.listener.OnRefreshListener;
-import com.tbruyelle.rxpermissions2.RxPermissions;
 import com.wms.adapter.CommonViewHolder;
 import com.wms.adapter.recyclerview.CommonAdapter;
 import com.wms.ble.utils.BluetoothUtils;
@@ -37,15 +34,7 @@ import java.util.List;
 
 
 public class MainActivity extends BaseActivity<ActivityMainBinding> {
-
-    public static final String[] PERMISSIONS = new String[]{
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.ACCESS_NETWORK_STATE,
-    };
-
     private CommonAdapter mAdapter;
-    final RxPermissions rxPermissions = new RxPermissions(this);
     private List<DeviceBean> mDeviceList = new ArrayList<>();
 
     /**
@@ -85,7 +74,6 @@ public class MainActivity extends BaseActivity<ActivityMainBinding> {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        initPermission();
         binding.idRecyclerview.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
         initRefreshLayout(binding.idRefreshLayout, refreshlayout -> {
             scanDevice();
@@ -193,18 +181,6 @@ public class MainActivity extends BaseActivity<ActivityMainBinding> {
     @Override
     protected int inflateContentView() {
         return R.layout.activity_main;
-    }
-
-    @SuppressLint("CheckResult")
-    private void initPermission() {
-        rxPermissions.request(PERMISSIONS)
-                .subscribe(granted -> {
-                    if (granted) {
-
-                    } else {
-                        finish();
-                    }
-                });
     }
 
     /**
