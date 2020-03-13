@@ -23,6 +23,10 @@ public class TempDataBean {
     private int measureStatus;
     private int gesture = -1;
     /**
+     * 算法版本号类型 0：表示本地算法版本号  1：表示底座算法版本号
+     */
+    private int algorithmVerType;
+    /**
      * 当前温度所用的采样
      */
     private int sample;
@@ -40,11 +44,12 @@ public class TempDataBean {
         this.temp = temp;
     }
 
-    public TempDataBean(float temp, float algorithmTemp, int sample, int packageNumber, int measureStatus, int percent) {
+    public TempDataBean(float temp, float algorithmTemp, int sample, int packageNumber, int measureStatus, int gesture, int percent) {
         this.temp = temp;
         this.algorithmTemp = algorithmTemp;
         this.sample = sample;
         this.measureStatus = measureStatus;
+        this.gesture = gesture;
         this.percent = percent;
         this.packageNumber = packageNumber;
     }
@@ -68,6 +73,12 @@ public class TempDataBean {
         this.time = time;
         this.temp = temp;
         this.sample = sample;
+    }
+
+    public TempDataBean(long time, float temp, float algorithmTemp) {
+        this.time = time;
+        this.temp = temp;
+        this.algorithmTemp = algorithmTemp;
     }
 
     public TempDataBean(long time, float temp, float algorithmTemp, int sample) {
@@ -139,5 +150,13 @@ public class TempDataBean {
 
     public void setGesture(int gesture) {
         this.gesture = gesture;
+    }
+
+    public int getAlgorithmVerType() {
+        return algorithmVerType;
+    }
+
+    public void setAlgorithmVerType(int algorithmVerType) {
+        this.algorithmVerType = algorithmVerType;
     }
 }

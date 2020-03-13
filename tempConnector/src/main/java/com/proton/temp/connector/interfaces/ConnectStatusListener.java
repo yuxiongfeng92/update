@@ -28,13 +28,12 @@ public abstract class ConnectStatusListener {
 
     /**
      * 接收重连次数
-     *
      * @param retryCount 当前重连次数
-     * @param leftCount  剩余次数
+     * @param leftCount 剩余次数
+     * @param totalTime 重连总耗时
      */
-    public void receiveReconnectTimes(int retryCount, int leftCount) {
+    public void receiveReconnectTimes(int retryCount, int leftCount,long totalTime) {
     }
-
     /**
      * mqtt连接如果底座换了贴，则回调该方法
      */
@@ -46,4 +45,13 @@ public abstract class ConnectStatusListener {
      */
     public void receiveDockerOffline(boolean isOffline) {
     }
+
+    /**
+     * 设备准备页面断开，6秒内没有重连则显示弹框---蓝牙连接
+     * wifi连接，30秒内没有重连则显示弹框
+     */
+    public void showBeforeMeasureDisconnect() {
+
+    }
+
 }

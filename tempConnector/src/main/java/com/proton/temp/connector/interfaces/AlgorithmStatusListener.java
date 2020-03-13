@@ -16,4 +16,17 @@ public class AlgorithmStatusListener {
      */
     public void receiveGesture(int gesture) {
     }
+
+    public void receiveMeasureStatusAndGesture(int status, int gesture) {
+
+    }
+
+    /**
+     * 获取算法版本号类型 0：表示本地算法版本号  1：表示底座算法版本号
+     *
+     * @param type
+     */
+    public void receiveAlgorithmVersionType(int type) {
+    }
+
 }

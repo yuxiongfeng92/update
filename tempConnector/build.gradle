@@ -45,6 +45,8 @@ dependencies {
     implementation 'com.wms:mqtt:1.0.0'
     implementation 'com.alibaba:fastjson:1.1.68.android'
     api 'com.wms:ble:1.1.1-alpha5'
-    implementation 'com.proton.temp:algorithm:1.1.2-alpha4'
     implementation 'com.wms:logger:1.0.1'
+    implementation 'com.proton.algorithm:tempAlgorithm:1.0.2-alpha7'//更新了一代体温贴算法
 }
+
+

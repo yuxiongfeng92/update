@@ -9,6 +9,7 @@ public class DeviceBean implements Serializable {
     private boolean isNeedUpdate;
     private String hardVersion;
     private DeviceType deviceType = DeviceType.P03;
+    private int bluetoothRssi;
 
     public DeviceBean(String macaddress, DeviceType deviceType) {
         this.macaddress = macaddress;
@@ -21,10 +22,11 @@ public class DeviceBean implements Serializable {
         this.connectionType = ConnectionType.NET;
     }
 
-    public DeviceBean(String macaddress, DeviceType deviceType, String hardVersion) {
+    public DeviceBean(String macaddress, DeviceType deviceType, String hardVersion,int bluetoothRssi) {
         this.macaddress = macaddress;
         this.deviceType = deviceType;
         this.hardVersion = hardVersion;
+        this.bluetoothRssi=bluetoothRssi;
     }
 
     public DeviceBean(String macaddress, ConnectionType connectionType) {
@@ -85,5 +87,26 @@ public class DeviceBean implements Serializable {
 
     public void setDockerMacaddress(String dockerMacaddress) {
         this.dockerMacaddress = dockerMacaddress;
+    }
+
+    public int getBluetoothRssi() {
+        return bluetoothRssi;
+    }
+
+    public void setBluetoothRssi(int bluetoothRssi) {
+        this.bluetoothRssi = bluetoothRssi;
+    }
+
+    @Override
+    public String toString() {
+        return "DeviceBean{" +
+                "macaddress='" + macaddress + '\'' +
+                ", dockerMacaddress='" + dockerMacaddress + '\'' +
+                ", connectionType=" + connectionType +
+                ", isNeedUpdate=" + isNeedUpdate +
+                ", hardVersion='" + hardVersion + '\'' +
+                ", deviceType=" + deviceType +
+                ", bluetoothRssi=" + bluetoothRssi +
+                '}';
     }
 }

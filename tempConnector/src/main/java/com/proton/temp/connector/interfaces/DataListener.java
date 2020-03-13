@@ -24,6 +24,17 @@ public class DataListener {
     public void receiveCurrentTemp(float currentTemp) {
     }
 
+
+    /**
+     * 接受原始温度和算法温度
+     *
+     * @param currentTemp   原始温度
+     * @param algorithmTemp 算法温度
+     */
+    public void receiveCurrentTemp(float currentTemp, float algorithmTemp) {
+
+    }
+
     /**
      * 接收当前温度
      */
@@ -85,4 +96,21 @@ public class DataListener {
      */
     public void receivePackageNumber(int packageNumber) {
     }
+
+    /**
+     * 判断体温贴是否断裂
+     *
+     * @param isEnable
+     */
+    public void judgeCarepatchEnable(boolean isEnable) {
+
+    }
+
+    /**
+     * @param bleRssi  蓝牙信号强度
+     * @param wifiRssi wifi信号强度
+     */
+    public void receiveBleAndWifiRssi(Integer bleRssi, Integer wifiRssi) {
+    }
+
 }

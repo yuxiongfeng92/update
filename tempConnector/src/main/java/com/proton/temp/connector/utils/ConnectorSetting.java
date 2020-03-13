@@ -8,7 +8,7 @@ public class ConnectorSetting {
     /**
      * MQTT数据接收超时时间
      */
-    public static final long MQTT_DISCONNECT_TIME_OUT = 10 * 60000;
+    public static final long MQTT_DISCONNECT_TIME_OUT = 15 * 60000;
     /**
      * MQTT数据接收超时时间,但不断开连接，为啥需要这样，问需求
      */
@@ -24,5 +24,6 @@ public class ConnectorSetting {
     /**
      * 广播扫描数据接收超时时间
      */
-    public static final long BROADCAST_DISCONNECT_TIMEOUT = 30000;
+//    public static final long BROADCAST_DISCONNECT_TIMEOUT = 30000;
+    public static final long BROADCAST_DISCONNECT_TIMEOUT = 6000;
 }

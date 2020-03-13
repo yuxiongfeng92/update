@@ -42,11 +42,11 @@ public class MQTTManager {
      */
     private long connectTimeOut = ConnectorSetting.MQTT_CONNECT_TIME_OUT;
     /**
-     * 数据接收超时时间，此时断开连接
+     * 数据接收超时时间(10分钟)，此时断开连接
      */
     private long disconnectTimeOut = ConnectorSetting.MQTT_DISCONNECT_TIME_OUT;
     /**
-     * 数据接收超时时间，此时断开连接
+     * 数据接收超时时间(30s)，此时断开连接
      */
     private static final long DISCONNECT_TIME_OUT_NOT_DISCONNECT = ConnectorSetting.DISCONNECT_TIME_OUT_NOT_DISCONNECT;
     /**
@@ -133,6 +133,7 @@ public class MQTTManager {
 
         @Override
         public void deliveryComplete(IMqttDeliveryToken token) {
+
         }
     };
 
@@ -145,8 +146,7 @@ public class MQTTManager {
         @Override
         public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
             Logger.w("mqtt连接失败:", exception, ",缓存topic:", mCacheTopics.size());
-            int code = ((MqttException) exception).getReasonCode();
-            if (code == 32100) {
+            if (exception instanceof MqttException && ((MqttException) exception).getReasonCode() == 32100) {
                 //已经连接直接订阅
                 dealWithCacheTopic();
             } else {
@@ -263,7 +263,11 @@ public class MQTTManager {
                 mConnectListeners.put(macaddress, new ConnectorListener(connectStatusListener, dataListener));
                 connectStatusListener.onConnectSuccess();
             }
-            mLastReceiveDataTime.put(macaddress, System.currentTimeMillis());
+
+            if (mLastReceiveDataTime == null || mLastReceiveDataTime.get(macaddress) == null || mLastReceiveDataTime.get(macaddress) <= 0) {
+                mLastReceiveDataTime.put(macaddress, System.currentTimeMillis());
+            }
+
             //开始计时器
             initTimer();
         } catch (MqttException e) {
@@ -283,7 +287,7 @@ public class MQTTManager {
         }
         Logger.w("监听器数量:", listenerMap.size(), ",是否联网:", Utils.isConnected(mContext));
         for (String mac : listenerMap.keySet()) {
-            disConnectInternal(mac, true);
+            disConnectInternal(mac, true, false);
         }
         for (String mac : listenerMap.keySet()) {
             if (Utils.isConnected(mContext)) {
@@ -299,7 +303,7 @@ public class MQTTManager {
      * 断开
      */
     public void disConnect(String macaddress) {
-        disConnectInternal(macaddress, true);
+        disConnectInternal(macaddress, true, true);
         if (hasSubscribe.size() <= 0) {
             Logger.w("关闭网络定时器");
             if (mNetTimer != null) {
@@ -308,7 +312,12 @@ public class MQTTManager {
         }
     }
 
-    private void disConnectInternal(String macaddress, boolean clearListener) {
+    /**
+     * @param macaddress
+     * @param clearListener
+     * @param isResetTime   新增条件  判断是否需要重置上次接收数据的时间，主要是为了判断10分钟未收到数据，不加这个判断会出现每次重连的时候都会重置时间，永远都不可能出现10分钟
+     */
+    private void disConnectInternal(String macaddress, boolean clearListener, boolean isResetTime) {
         try {
             if (clearListener) {
                 mConnectListeners.remove(macaddress);
@@ -319,7 +328,9 @@ public class MQTTManager {
                 mMQTTClient.unsubscribe(Utils.getWillTopicByMacAddress(macaddress));
                 mMQTTClient.unsubscribe(Utils.getPatchDisconnectTopicByMacAddress(macaddress));
             }
-            resetTime(macaddress);
+            if (isResetTime) {
+                resetTime(macaddress);
+            }
             Logger.w("取消mqtt订阅成功:", macaddress, ",hasSubscribe大小:", hasSubscribe.size(), ",清除监听器:", clearListener);
             if (hasSubscribe.size() <= 0) {
                 clear();
@@ -377,12 +388,16 @@ public class MQTTManager {
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                for (final String macaddress : mLastReceiveDataTime.keySet()) {
-                    long timeInterval = System.currentTimeMillis() - mLastReceiveDataTime.get(macaddress);
+                //解决hashmap的ConcurrentModificationException异常
+                Map<String, Long> tempHash = new HashMap<>();
+                tempHash = mLastReceiveDataTime;
+                for (final String macaddress : tempHash.keySet()) {
+                    long timeInterval = System.currentTimeMillis() - tempHash.get(macaddress);
+                    Logger.w("timeInterval is : ", timeInterval);
                     if (mConnectListeners.get(macaddress) != null) {
                         if (timeInterval > disconnectTimeOut) {
-                            Logger.w("mqtt数据接收超时了:", macaddress, ",上次接收数据时间:", mLastReceiveDataTime.get(macaddress), ",监听器:", mConnectListeners.size());
-                            disConnectInternal(macaddress, false);
+                            Logger.w("mqtt数据接收超时了:", macaddress, ",上次接收数据时间:", tempHash.get(macaddress), ",监听器:", mConnectListeners.size());
+                            disConnectInternal(macaddress, false, true);
                             mConnectListeners.get(macaddress).getConnectStatusListener().onDisconnect(false);
                         } else if (timeInterval >= DISCONNECT_TIME_OUT_NOT_DISCONNECT) {
                             mConnectListeners.get(macaddress).getConnectStatusListener().receiveDockerOffline(true);

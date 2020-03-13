@@ -37,6 +37,9 @@ allprojects {
         maven {
             url "https://repo.eclipse.org/content/repositories/paho-releases/"
         }
+        maven{
+            url "https://dl.bintray.com/yxf22/coreMaven"
+        }
     }
 }
 

@@ -1,0 +1,7 @@
+# ninja log v5
+1	129	0	CMakeFiles/tempconnector.dir/JniHelper.cpp.o	ea0857b91fdcddba
+129	241	0	F:/workspace/lib/TempConnector/tempConnector/build/intermediates/cmake/release/obj/arm64-v8a/libtempconnector.so	f176854becd448ce
+1	150	0	CMakeFiles/tempconnector.dir/JniHelper.cpp.o	ea0857b91fdcddba
+150	269	0	F:/workspace/lib/TempConnector/tempConnector/build/intermediates/cmake/release/obj/arm64-v8a/libtempconnector.so	f176854becd448ce
+2	210	0	CMakeFiles/tempconnector.dir/JniHelper.cpp.o	ea0857b91fdcddba
+210	345	0	F:/workspace/lib/TempConnector/tempConnector/build/intermediates/cmake/release/obj/arm64-v8a/libtempconnector.so	f176854becd448ce

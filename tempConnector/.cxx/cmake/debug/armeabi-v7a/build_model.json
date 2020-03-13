@@ -1,0 +1,83 @@
+{
+  "variant": {
+    "module": {
+      "rootBuildGradleFolder": "F:\\workspace\\lib\\TempConnector",
+      "sdkFolder": "F:\\sdk",
+      "isNativeCompilerSettingsCacheEnabled": false,
+      "isBuildOnlyTargetAbiEnabled": true,
+      "splitsAbiFilterSet": [],
+      "intermediatesFolder": "F:\\workspace\\lib\\TempConnector\\tempConnector\\build\\intermediates",
+      "gradleModulePathName": ":tempConnector",
+      "moduleRootFolder": "F:\\workspace\\lib\\TempConnector\\tempConnector",
+      "makeFile": "F:\\workspace\\lib\\TempConnector\\tempConnector\\src\\main\\cpp\\CMakeLists.txt",
+      "buildSystem": "CMAKE",
+      "compilerSettingsCacheFolder": "F:\\workspace\\lib\\TempConnector\\.cxx",
+      "cxxFolder": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx",
+      "ndkFolder": "F:\\sdk\\android-ndk-r15c",
+      "ndkVersion": "15.2.4203891",
+      "ndkSupportedAbiList": [
+        "ARMEABI",
+        "ARMEABI_V7A",
+        "ARM64_V8A",
+        "MIPS",
+        "MIPS64",
+        "X86",
+        "X86_64"
+      ],
+      "ndkDefaultAbiList": [
+        "ARMEABI",
+        "ARMEABI_V7A",
+        "ARM64_V8A",
+        "MIPS",
+        "MIPS64",
+        "X86",
+        "X86_64"
+      ],
+      "cmakeToolchainFile": "."
+    },
+    "buildSystemArgumentList": [
+      "-DANDROID_PLATFORM\u003dandroid-14",
+      "-DANDROID_TOOLCHAIN\u003dclang",
+      "-DANDROID_STL\u003dgnustl_static"
+    ],
+    "cFlagList": [],
+    "cppFlagsList": [],
+    "variantName": "debug",
+    "soFolder": "F:\\workspace\\lib\\TempConnector\\tempConnector\\build\\intermediates\\cmake\\debug\\lib",
+    "objFolder": "F:\\workspace\\lib\\TempConnector\\tempConnector\\build\\intermediates\\cmake\\debug\\obj",
+    "jsonFolder": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cmake\\debug",
+    "gradleBuildOutputFolder": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cxx\\debug",
+    "isDebuggableEnabled": true,
+    "validAbiList": [
+      "ARMEABI",
+      "ARMEABI_V7A",
+      "ARM64_V8A",
+      "X86",
+      "X86_64",
+      "MIPS",
+      "MIPS64"
+    ],
+    "buildTargetSet": []
+  },
+  "abi": "ARMEABI_V7A",
+  "abiPlatformVersion": 19,
+  "cxxBuildFolder": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cmake\\debug\\armeabi-v7a",
+  "jsonFile": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cmake\\debug\\armeabi-v7a\\android_gradle_build.json",
+  "gradleBuildOutputFolder": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cxx\\debug\\armeabi-v7a",
+  "objFolder": "F:\\workspace\\lib\\TempConnector\\tempConnector\\build\\intermediates\\cmake\\debug\\obj\\armeabi-v7a",
+  "buildCommandFile": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cmake\\debug\\armeabi-v7a\\build_command.txt",
+  "buildOutputFile": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cmake\\debug\\armeabi-v7a\\build_output.txt",
+  "modelOutputFile": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cmake\\debug\\armeabi-v7a\\build_model.json",
+  "cmake": {
+    "cmakeListsWrapperFile": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cxx\\debug\\armeabi-v7a\\CMakeLists.txt",
+    "toolchainWrapperFile": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cxx\\debug\\armeabi-v7a\\android_gradle_build.toolchain.cmake",
+    "buildGenerationStateFile": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cxx\\debug\\armeabi-v7a\\build_generation_state.json",
+    "cacheKeyFile": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cxx\\debug\\armeabi-v7a\\compiler_cache_key.json",
+    "compilerCacheUseFile": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cxx\\debug\\armeabi-v7a\\compiler_cache_use.json",
+    "compilerCacheWriteFile": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cxx\\debug\\armeabi-v7a\\compiler_cache_write.json",
+    "toolchainSettingsFromCacheFile": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cxx\\debug\\armeabi-v7a\\compiler_settings_cache.cmake",
+    "cmakeWrappingBaseFolder": "."
+  },
+  "jsonGenerationLoggingRecordFile": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cmake\\debug\\armeabi-v7a\\json_generation_record.json",
+  "compileCommandsJsonFile": "F:\\workspace\\lib\\TempConnector\\tempConnector\\.cxx\\cmake\\debug\\armeabi-v7a\\compile_commands.json"
+}

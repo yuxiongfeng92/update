@@ -1,0 +1,7 @@
+# ninja log v5
+1	397	0	CMakeFiles/tempconnector.dir/JniHelper.cpp.o	cb1f9bc0be02be9b
+397	549	0	F:/workspace/lib/TempConnector/tempConnector/build/intermediates/cmake/release/obj/armeabi/libtempconnector.so	6aabfcb540b003db
+1	228	0	CMakeFiles/tempconnector.dir/JniHelper.cpp.o	cb1f9bc0be02be9b
+229	370	0	F:/workspace/lib/TempConnector/tempConnector/build/intermediates/cmake/release/obj/armeabi/libtempconnector.so	6aabfcb540b003db
+0	301	0	CMakeFiles/tempconnector.dir/JniHelper.cpp.o	cb1f9bc0be02be9b
+301	515	0	F:/workspace/lib/TempConnector/tempConnector/build/intermediates/cmake/release/obj/armeabi/libtempconnector.so	6aabfcb540b003db

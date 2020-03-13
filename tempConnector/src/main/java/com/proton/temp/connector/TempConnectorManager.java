@@ -115,6 +115,21 @@ public class TempConnectorManager {
      * 断开连接时间
      */
     private long mDisconnectTime;
+
+    private long firstDisConnectTime;
+
+    /**
+     * 总重连时间
+     */
+    private long totalReConnectTime;
+
+    /**
+     * 测量准备页面断开连接的标志
+     */
+    private boolean isFirst = true;
+
+    private int connectStatus = 2;
+
     /**
      * 断开连接后重连获取温度第一个温度采样
      */
@@ -193,10 +208,13 @@ public class TempConnectorManager {
             for (ConnectStatusListener listener : connectStatusListeners) {
                 listener.onConnectSuccess();
             }
+            connectStatus = 2;
+            isFirst = true;
         }
 
         @Override
         public void onConnectFaild() {
+            connectStatus = 1;
             reconnect();
             Logger.w("onConnectFaild....");
         }
@@ -205,7 +223,15 @@ public class TempConnectorManager {
         public void onDisconnect(boolean isManual) {
             mDisconnectTime = System.currentTimeMillis();
             Logger.w("onDisconnect....");
-            reconnect();
+            connectStatus = 1;
+            if (getConnectionType().equals(ConnectionType.NET)) {
+                List<ConnectStatusListener> listeners = new ArrayList<>(connectStatusListeners);
+                for (ConnectStatusListener listener : listeners) {
+                    listener.onDisconnect(false);
+                }
+            } else {
+                reconnect();
+            }
         }
 
         @Override
@@ -329,6 +355,21 @@ public class TempConnectorManager {
                 }
             }
         }
+
+        @Override
+        public void judgeCarepatchEnable(boolean isEnable) {
+            Logger.w("体温贴是否可用:", isEnable, ",mac = ", patchMacaddress);
+            for (DataListener connectorListener : mDataListeners) {
+                connectorListener.judgeCarepatchEnable(isEnable);
+            }
+        }
+
+        @Override
+        public void receiveBleAndWifiRssi(Integer bleRssi, Integer wifiRssi) {
+            for (DataListener connectorListener : mDataListeners) {
+                connectorListener.receiveBleAndWifiRssi(bleRssi, wifiRssi);
+            }
+        }
     };
 
     private TempConnectorManager(DeviceBean deviceBean) {
@@ -343,14 +384,20 @@ public class TempConnectorManager {
      * 设置连接方式，必须在调用connect方法之前调用
      */
     public TempConnectorManager setConnectionType(ConnectionType connectionType) {
+        if (connectionType==getConnectionType()) {
+            Logger.w("该类型已指定，不要重复指定");
+            return this;
+        }
         if (mDeviceBean.getDeviceType() == DeviceType.P02) {
             mConnector = BleConnector.getInstance(patchMacaddress, false);
             doConnectionTypeCallback();
             return this;
         }
+
         if (mConnector != null) {
             mConnector.disConnect();
         }
+
         if (connectionType != ConnectionType.NET && (TextUtils.isEmpty(patchMacaddress) || NET_DEFAULT_PATCH_MAC.equals(patchMacaddress))) {
             //如果是从网络切换到蓝牙或者广播
             throw new IllegalArgumentException("you should set patchMacaddress before you switch to net connect");
@@ -385,6 +432,7 @@ public class TempConnectorManager {
             doConnectionTypeCallback();
             return this;
         }
+
         if (mDeviceBean.getDeviceType() == DeviceType.P02) {
             throw new IllegalArgumentException("you can not switch connection type on p02 devices,because it does not support!");
         }
@@ -463,7 +511,9 @@ public class TempConnectorManager {
                 .isDebug(BuildConfig.DEBUG)
                 .build();
         BleConnector.init(context);
-        setMQTTConfig(mqttConfig);
+        if (mqttConfig != null) {
+            setMQTTConfig(mqttConfig);
+        }
     }
 
     public static TempConnectorManager getInstance(DeviceBean deviceBean) {
@@ -498,10 +548,12 @@ public class TempConnectorManager {
             mCurrentTemp.setMeasureStatus(measureStatus);
             mCurrentTemp.setGesture(gesture);
             mCurrentTemp.setPercent(percent);
-            mCurrentTemp.setAlgorithmTemp(processTemp);
+            mCurrentTemp.setAlgorithmVerType(getConnectionType() == ConnectionType.NET ? 1 : 0);
             mAllTemps.add(mCurrentTemp);
 
-            Logger.w("当前温度:", mCurrentTemp.getAlgorithmTemp(), ",连接方式:", getConnectionType(), ",测量状态:", mCurrentTemp.getMeasureStatus(), ",mac:", patchMacaddress);
+            //在这里接入sample和type，smaple和type数据和其他数据数组大小不一致
+
+            Logger.w("当前算法温度:", mCurrentTemp.getAlgorithmTemp(), ",连接方式:", getConnectionType(), ",测量状态:", mCurrentTemp.getMeasureStatus(), ",mac:", patchMacaddress);
             mHighestTemp = Math.max(processTemp, mHighestTemp);
             mLowestTemp = Math.min(processTemp, mLowestTemp);
 
@@ -509,6 +561,7 @@ public class TempConnectorManager {
             boolean hasReceiveAllTemp = mCurrentSize >= mCurrentTempSize;
             for (DataListener connectorListener : mDataListeners) {
                 connectorListener.receiveCurrentTemp(processTemp);
+                connectorListener.receiveCurrentTemp(mCurrentTemp.getTemp(), processTemp);
                 connectorListener.receiveCurrentTemp(processTemp, mCurrentTempTime);
                 if (hasReceiveAllTemp) {
                     connectorListener.receiveCurrentTemp(new ArrayList<>(mCurrentTempDataList));
@@ -526,7 +579,9 @@ public class TempConnectorManager {
 
             for (AlgorithmStatusListener listener : algorithmStatusListeners) {
                 listener.receiveMeasureStatus(measureStatus);
+                listener.receiveAlgorithmVersionType(getConnectionType() == ConnectionType.NET ? 1 : 0);
                 listener.receiveGesture(gesture);
+                listener.receiveMeasureStatusAndGesture(measureStatus, gesture);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -575,7 +630,31 @@ public class TempConnectorManager {
      * 重新连接设备
      */
     private void reconnect() {
-        List<ConnectStatusListener> listeners = new ArrayList<>(connectStatusListeners);
+
+        final List<ConnectStatusListener> listeners = new ArrayList<>(connectStatusListeners);
+
+        if (isFirst) {
+/*            new Handler(Looper.getMainLooper())
+                    .postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (connectStatus == 1) {
+                                for (ConnectStatusListener listener : listeners) {
+                                    listener.showBeforeMeasureDisconnect();
+                                }
+                            }
+                        }
+                    }, 6000);*/
+
+            if (connectStatus == 1) {
+                for (ConnectStatusListener listener : listeners) {
+                    listener.showBeforeMeasureDisconnect();
+                }
+            }
+            isFirst = false;
+        }
+
+
         for (ConnectStatusListener listener : listeners) {
             listener.onConnectFaild();
         }
@@ -595,12 +674,20 @@ public class TempConnectorManager {
             return;
         }
 
-        mCurrentReconnectCount++;
-        Logger.w("重连:", patchMacaddress, ",剩余重连次数:", (mReconnectCount - mCurrentReconnectCount));
-        for (ConnectStatusListener listener : listeners) {
-            listener.receiveReconnectTimes(mCurrentReconnectCount, mReconnectCount - mCurrentReconnectCount);
+        if (mCurrentReconnectCount == 0) {
+            firstDisConnectTime = System.currentTimeMillis();
         }
 
+        if (firstDisConnectTime > 0) {
+            totalReConnectTime = System.currentTimeMillis() - firstDisConnectTime;
+        }
+
+        mCurrentReconnectCount++;
+
+        Logger.w("重连:", patchMacaddress, ",剩余重连次数:", (mReconnectCount - mCurrentReconnectCount));
+        for (ConnectStatusListener listener : listeners) {
+            listener.receiveReconnectTimes(mCurrentReconnectCount, mReconnectCount - mCurrentReconnectCount, totalReConnectTime);
+        }
         connect();
     }
 
@@ -615,8 +702,11 @@ public class TempConnectorManager {
             }
             mCurrentTemp = temp;
             doAlgorithmCallback(temp.getAlgorithmTemp(), temp.getSample(), temp.getMeasureStatus(), temp.getPercent(), temp.getGesture());
-            mSamples.add(temp.getPackageNumber());
-            mConnectionType.add(getConnectionType().ordinal());
+            //这里需要做判断，与doAlgorithmCallback里面的处理同步，避免数据异常
+            if (mCurrentTemp != null) {
+                mSamples.add(temp.getPackageNumber());
+                mConnectionType.add(getConnectionType().ordinal());
+            }
         }
     }
 
@@ -625,6 +715,10 @@ public class TempConnectorManager {
      */
     public boolean isConnected() {
         return mConnector.isConnected();
+    }
+
+    public Connector getmConnector() {
+        return mConnector;
     }
 
     public void disConnect() {
@@ -743,12 +837,16 @@ public class TempConnectorManager {
         for (DataListener connectorListener : mDataListeners) {
             connectorListener.receiveRawTemp(currentTemp.getTemp());
         }
-        if (getConnectionType() == ConnectionType.BLUETOOTH) {
-            mSamples.add(currentTemp.getSample());
-        } else {
-            mSamples.add(currentTemp.getPackageNumber());
+
+        if (mCurrentTemp != null) {
+            if (getConnectionType() == ConnectionType.BLUETOOTH) {
+                mSamples.add(currentTemp.getSample());
+            } else {
+                mSamples.add(currentTemp.getPackageNumber());
+            }
+            mConnectionType.add(getConnectionType().ordinal());
         }
-        mConnectionType.add(getConnectionType().ordinal());
+
         mCurrentTempTime = currentTemp.getTime();
         if (enableAlgorithm) {
             chooseAlgorithm(currentTemp);
@@ -758,6 +856,7 @@ public class TempConnectorManager {
             mLowestTemp = Math.min(mCurrentTemp.getTemp(), mLowestTemp);
             for (DataListener connectorListener : mDataListeners) {
                 connectorListener.receiveCurrentTemp(mCurrentTemp.getTemp());
+                connectorListener.receiveCurrentTemp(mCurrentTemp.getTemp(), mCurrentTemp.getAlgorithmTemp());
             }
             mAllTemps.add(mCurrentTemp);
         }
@@ -893,6 +992,7 @@ public class TempConnectorManager {
         disConnect();
     }
 
+
     /**
      * 是否有设备连接
      */
@@ -963,5 +1063,15 @@ public class TempConnectorManager {
 
     public static void setMQTTConfig(MQTTConfig config) {
         MQTTConnector.init(mContext, config);
+    }
+
+
+    /**
+     * 获取本地算法版本号
+     *
+     * @return
+     */
+    public String getLocalAlgorithmVersion() {
+        return getAlgorithmManager().getVersion();
     }
 }

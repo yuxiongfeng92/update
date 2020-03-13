@@ -11,9 +11,14 @@ import android.text.TextUtils;
 
 import com.proton.temp.connector.R;
 import com.proton.temp.connector.bean.DeviceType;
+import com.proton.temp.connector.bluetooth.data.parse.BleDataParse;
+import com.proton.temp.connector.bluetooth.data.parse.IBleDataParse;
+import com.proton.temp.connector.bluetooth.data.uuid.CardUUID;
+import com.proton.temp.connector.bluetooth.data.uuid.IDeviceUUID;
 import com.proton.temp.connector.bluetooth.utils.BleUtils;
 import com.wms.ble.bean.ScanResult;
 import com.wms.ble.callback.OnConnectListener;
+import com.wms.ble.callback.OnReadCharacterListener;
 import com.wms.ble.callback.OnSubscribeListener;
 import com.wms.ble.callback.OnWriteCharacterListener;
 import com.wms.ble.operator.FastBleOperator;
@@ -32,6 +37,20 @@ import java.io.IOException;
  * <p/>
  */
 public class FirewareUpdateManager {
+
+    /**
+     * 数据解析
+     */
+    private IBleDataParse dataParse = new BleDataParse();
+    /**
+     * 设备uuid数据提供者
+     */
+    private IDeviceUUID deviceUUID = new CardUUID();
+
+    /**
+     * 首次扫描需要获取电量
+     */
+    private boolean isFirstScan = true;
 
     /**
      * 重置服务uuid
@@ -116,12 +135,12 @@ public class FirewareUpdateManager {
     private void scanDevice(final String mac) {
         bleOperator = new FastBleOperator(mContext);
         bleOperator.setConnectListener(new OnConnectListener() {
-
             @Override
             public void onConnectSuccess(final ScanResult result) {
                 if (firewareAdapter == null) {
                     throw new IllegalArgumentException("you need to provide a firewareAdapter");
                 }
+
                 deviceType = BroadcastUtils.parseDeviceType(result.getScanRecord());
                 filePath = firewareAdapter.getFirewarePath(deviceType);
                 if (TextUtils.isEmpty(filePath) || !new File(filePath).exists()) {
@@ -134,6 +153,13 @@ public class FirewareUpdateManager {
                 connectDeviceMac = result.getDevice().getAddress();
                 Logger.w("固件升级:connectDeviceMac:", connectDeviceMac);
                 Logger.w("固件升级:广播包:", BleUtils.bytesToHexString(result.getScanRecord()));
+
+                if (isFirstScan && !judgeOad(result)) {
+                    judgeBattery();
+                    isFirstScan = false;
+                    return;
+                }
+                isFirstScan = false;
                 Handler handler = new Handler(Looper.getMainLooper());
                 handler.postDelayed(new Runnable() {
                     @Override
@@ -145,6 +171,8 @@ public class FirewareUpdateManager {
                         }
                     }
                 }, 200);
+
+
             }
 
             @Override
@@ -167,10 +195,83 @@ public class FirewareUpdateManager {
         bleOperator.scanAndConnect(mac);
     }
 
+
+    /**
+     * 判断是否是oad模式,如果是oad直接进行升级不用判断电量
+     *
+     * @param result
+     * @return
+     */
+    private boolean judgeOad(ScanResult result) {
+        //判断是否是oad模式
+        byte[] scanRecord = result.getScanRecord();
+        DeviceType type = BroadcastUtils.parseDeviceType(scanRecord);
+        if (type != DeviceType.None) {
+            String deviceName = result.getDevice().getName();
+            if ("OAD THEM".equals(deviceName)) {
+                Logger.w("oad模式升级不需要判断电量");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 判断电量是否大于50%（异步操作）
+     *
+     * @return
+     */
+    private void judgeBattery() {
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                bleOperator.read(connectDeviceMac, deviceUUID.getServiceTemp(), deviceUUID.getCharactorBatteryUUID(), new OnReadCharacterListener() {
+                    @Override
+                    public void onFail() {
+                        super.onFail();
+                        Handler handler = new Handler(Looper.getMainLooper());
+                        handler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (hasResetDevice || connectDeviceMac.equals(UPDATE_MACADDRESS)) {
+                                    uploadData();
+                                } else {
+                                    resetDevice();
+                                }
+                            }
+                        }, 200);
+                    }
+
+                    @Override
+                    public void onSuccess(byte[] bytes) {
+                        super.onSuccess(bytes);
+                        int battery = dataParse.parseBattery(bytes);
+                        if (battery < 30) {
+                            updateFail(getString(R.string.string_battery_low_fifty), UpdateFailType.BATTERY_FAIL);
+                        } else {
+                            Handler handler = new Handler(Looper.getMainLooper());
+                            handler.postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (hasResetDevice || connectDeviceMac.equals(UPDATE_MACADDRESS)) {
+                                        uploadData();
+                                    } else {
+                                        resetDevice();
+                                    }
+                                }
+                            }, 200);
+                        }
+                    }
+                });
+            }
+        }, 200);
+    }
+
     /**
      * 上传固件包
      */
     private void uploadData() {
+
         bleOperator.subscribeNotification(connectDeviceMac, SERVICE_UPDATE_FIRMWARE, CHARACTOR_UPDATE_CALLBACK, new OnSubscribeListener() {
 
             @Override
@@ -187,6 +288,15 @@ public class FirewareUpdateManager {
 
             @Override
             public void onNotify(String s, byte[] bytes) {
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (onFirewareStatusListener!=null) {
+                            onFirewareStatusListener.onUpdateReadyCompelete();//升级准备阶段完成
+                            onFirewareStatusListener.onUpdatind();//升级中，固件写入
+                        }
+                    }
+                });
                 String countString = BleUtils.bytesToHexString(bytes).substring(0, 4);
                 int index = Integer.parseInt(countString.substring(2, 4) + countString.substring(0, 2), 16);
                 write(index, bytes);
@@ -217,7 +327,17 @@ public class FirewareUpdateManager {
         //这个回调不放到写入成功是因为有时候会出现最后一包不回调导致提示升级失败
         if (onFirewareUpdateListener != null) {
             onFirewareUpdateListener.onProgress(progress);
+            if (progress >= 0.99 && progress < 1) {
+                if (onFirewareStatusListener != null) {
+                    onFirewareStatusListener.onUpdatingComplete();
+                    onFirewareStatusListener.onUpdateVerify();
+                }
+
+            }
             if (index == mFileSize / buffSize - 1) {
+                if (onFirewareStatusListener != null) {
+                    onFirewareStatusListener.onUpdateVerifyComplete();
+                }
                 onFirewareUpdateListener.onSuccess(deviceType, connectDeviceMac);
                 Logger.w("升级总耗时:", (System.currentTimeMillis() - startTime));
             }
@@ -322,6 +442,44 @@ public class FirewareUpdateManager {
 
     private OnFirewareUpdateListener onFirewareUpdateListener;
 
+    private OnFirewareStatusListener onFirewareStatusListener;
+
+    public void setOnFirewareStatusListener(OnFirewareStatusListener onFirewareStatusListener) {
+        this.onFirewareStatusListener = onFirewareStatusListener;
+    }
+
+    /**
+     * 升级状态回调的接口
+     */
+    public interface OnFirewareStatusListener {
+
+        /**
+         * 升级准备完成
+         */
+        void onUpdateReadyCompelete();
+
+        /**
+         * 升级中
+         */
+        void onUpdatind();
+
+        /**
+         * 升级中完成
+         */
+        void onUpdatingComplete();
+
+        /**
+         * 验证中
+         */
+        void onUpdateVerify();
+
+        /**
+         * 验证完成
+         */
+        void onUpdateVerifyComplete();
+    }
+
+
     private String getString(int stringRes) {
         return mContext.getString(stringRes);
     }
@@ -351,6 +509,10 @@ public class FirewareUpdateManager {
          * 固件写入失败
          */
         FIREWARE_WRITE_FAIL,
+        /**
+         * 获取电量失败(电量不足)
+         */
+        BATTERY_FAIL
     }
 
     public interface FirewareAdapter {

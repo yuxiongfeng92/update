@@ -80,6 +80,16 @@ public class BleConnector implements Connector {
     private List<TempDataBean> mCacheTemps = new ArrayList<>();
     private ConnectStatusListener connectStatusListener;
     private Timer mGetTempTimer;
+    /**
+     * 当蓝牙断开失败的时候，重复断开
+     */
+    private Timer mCycDisconnectTimer;
+    private int disconnectCount = 0;
+    /**
+     * 循环5次
+     */
+    private int disconnectTotalCount = Integer.MAX_VALUE;
+
     private DataListener dataListener;
     /**
      * 当前采样频率
@@ -89,6 +99,11 @@ public class BleConnector implements Connector {
      * 是否是1.5版本蓝牙，目前体温贴包含两个蓝牙版本，处理方式不一样
      */
     private boolean isV1_5;
+
+    /**
+     * 从第二次开始接收数据的时候开始检测体温贴是否断裂
+     */
+    private boolean isFirstCheckPatchEnable = true;
 
     private BleConnector(Context context, String macaddress, boolean isV1_5) {
         if (context != null) {
@@ -124,11 +139,19 @@ public class BleConnector implements Connector {
      * 通过mac地址连接
      */
     public void connect() {
+        if (mCycDisconnectTimer != null) {
+            mCycDisconnectTimer.cancel();
+            mCycDisconnectTimer = null;
+        }
         connect(null, null);
     }
 
     @Override
     public void connect(final ConnectStatusListener connectListener, DataListener dataListener) {
+        if (mCycDisconnectTimer != null) {
+            mCycDisconnectTimer.cancel();
+            mCycDisconnectTimer = null;
+        }
         this.connectStatusListener = connectListener;
         this.dataListener = dataListener;
         if (!BluetoothUtils.isBluetoothOpened()) {
@@ -136,7 +159,9 @@ public class BleConnector implements Connector {
             mainHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    connectStatusListener.onConnectFaild();
+                    if (connectStatusListener != null) {
+                        connectStatusListener.onConnectFaild();
+                    }
                 }
             }, ConnectorSetting.NO_BLUETOOTH_RECONNECT_TIME);
             return;
@@ -189,7 +214,7 @@ public class BleConnector implements Connector {
         //订阅电量通知
         subscribeBatteryNotification();
         //获取电量
-        //getBattery();
+        getBattery();
         //获取序列号
         getSerial();
         //获取版本号
@@ -251,6 +276,12 @@ public class BleConnector implements Connector {
                     Logger.w("v1.0固件设备");
                     startGetTempTimer();
                 }
+            }
+
+
+            @Override
+            public void judgeCarepatchEnable(boolean isEnable) {
+                dataListener.judgeCarepatchEnable(isEnable);
             }
         };
     }
@@ -332,6 +363,7 @@ public class BleConnector implements Connector {
      */
     private void parseTemp(final byte[] data) {
         if (mReceiverDataListener == null) return;
+
         mainHandler.post(new Runnable() {
             @Override
             public void run() {
@@ -340,9 +372,31 @@ public class BleConnector implements Connector {
                 } else {
                     mReceiverDataListener.receiveCurrentTemp(dataParse.parseTemp(data));
                 }
+
+                if (!isFirstCheckPatchEnable) {
+                    mReceiverDataListener.judgeCarepatchEnable(judgeCarepatchEnableByBluetooth(data));
+                }
+                isFirstCheckPatchEnable = false;
+
+
             }
         });
     }
+
+    /**
+     * 判断体温贴是否断裂（蓝牙方式）
+     *
+     * @param tempData
+     * @return
+     */
+    public static boolean judgeCarepatchEnableByBluetooth(byte[] tempData) {
+        String temp = BleUtils.bytesToHexString(tempData);
+        if (temp.equalsIgnoreCase("3fff")) {
+            return false;
+        }
+        return true;
+    }
+
 
     /**
      * 订阅温度通知
@@ -529,10 +583,15 @@ public class BleConnector implements Connector {
      * 获取电量
      */
     public BleConnector getBattery() {
-        mBleOperator.read(macaddress, deviceUUID.getDeviceInfoServiceUUID(), deviceUUID.getCharactorBatteryUUID(), new OnReadCharacterListener() {
+        mBleOperator.read(macaddress, deviceUUID.getServiceTemp(), deviceUUID.getCharactorBatteryUUID(), new OnReadCharacterListener() {
             @Override
             public void onSuccess(byte[] data) {
                 parseBattery(data);
+            }
+
+            @Override
+            public void onFail() {
+                super.onFail();
             }
         });
         return this;
@@ -560,6 +619,19 @@ public class BleConnector implements Connector {
     public void disConnect() {
         clear(true);
         mBleOperator.disConnect(macaddress);
+
+        mainHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (isConnected() && mBleOperator != null) {
+                    Logger.w("蓝牙断开失败，开启定时器重复断开");
+                    disconnectFailRes();
+                } else {
+                    Logger.w("成功断开蓝牙连接。。。");
+                }
+            }
+        }, 2000);
+
     }
 
     @Override
@@ -635,12 +707,41 @@ public class BleConnector implements Connector {
     }
 
     /**
+     * 当断开蓝牙失败时候的操作
+     */
+    private void disconnectFailRes() {
+        if (mCycDisconnectTimer == null) {
+            mCycDisconnectTimer = new Timer();
+        }
+        mCycDisconnectTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                Logger.w("蓝牙断开失败，开启定时器重复断开，断开次数 ：", disconnectCount, "次");
+                disconnectCount++;
+                mBleOperator.disConnect(macaddress);
+                if (disconnectCount > disconnectTotalCount) {
+                    mCycDisconnectTimer.cancel();
+                    mCycDisconnectTimer = null;
+                    disconnectCount = 0;
+                }
+            }
+        }, 2000, 2000);
+
+    }
+
+    /**
      * 清空信息
      */
     public void clear(boolean isClearListener) {
         if (mGetTempTimer != null) {
             mGetTempTimer.cancel();
         }
+        if (mCycDisconnectTimer != null) {
+            mCycDisconnectTimer.cancel();
+            mCycDisconnectTimer = null;
+        }
+        disconnectCount = 0;
+
         mCacheTemps.clear();
         mCacheTempCount = 0;
         if (isClearListener) {
@@ -718,7 +819,7 @@ public class BleConnector implements Connector {
                 } else {
                     mac = BroadcastUtils.getMacaddressByBroadcastOld(scanRecord);
                 }
-                DeviceBean deviceBean = new DeviceBean(mac, type, BroadcastUtils.getHardVersionByBroadcast(result.getScanRecord()));
+                DeviceBean deviceBean = new DeviceBean(mac, type, BroadcastUtils.getHardVersionByBroadcast(result.getScanRecord()), result.getRssi());
                 if (BroadcastUtils.isUpdateStatus(result)) {
                     deviceBean.setNeedUpdate(true);
                 }

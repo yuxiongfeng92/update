@@ -66,6 +66,7 @@ public class Utils {
                     connectorListenerMap.get(macaddress).getDataListener().receiveBattery(dockerDataBean.getBattery());
                     connectorListenerMap.get(macaddress).getDataListener().receiveCharge(dockerDataBean.isCharge());
                     connectorListenerMap.get(macaddress).getDataListener().receivePackageNumber(dockerDataBean.getPackageNumber());
+                    connectorListenerMap.get(macaddress).getDataListener().receiveBleAndWifiRssi(dockerDataBean.getBleRssi(), dockerDataBean.getWifiRssi());
 
                     if (!TextUtils.isEmpty(dockerDataBean.getHardVersion())) {
                         //硬件版本

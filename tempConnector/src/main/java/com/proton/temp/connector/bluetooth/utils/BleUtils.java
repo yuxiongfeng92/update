@@ -193,7 +193,7 @@ public class BleUtils {
             for (int i = 0; i < rawTemps.length; i++) {
                 float temp = Integer.parseInt(rawTemps[i]) / 100.0f;
                 float algorithmTemp = Integer.parseInt(algorithmTemps[i]) / 100.0f;
-                tempList.add(new TempDataBean(temp, algorithmTemp, 1, dockerData.getPackageNumber(), dockerData.getAlgorithmStatus(), dockerData.getPercent()));
+                tempList.add(new TempDataBean(temp, algorithmTemp, 1, dockerData.getPackageNumber(), dockerData.getAlgorithmStatus(), dockerData.getAlgorithmGesture(), dockerData.getPercent()));
             }
         }
         return tempList;

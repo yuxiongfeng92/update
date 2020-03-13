@@ -41,6 +41,9 @@ public class DockerDataBean {
     private int rssi;
     @JSONField(name = "sta")
     private int algorithmStatus;
+    @JSONField(name = "alg_gstr")
+    private int algorithmGesture;
+
     @JSONField(name = "pct")
     private int percent;
     /**
@@ -48,6 +51,18 @@ public class DockerDataBean {
      */
     @JSONField(name = "pkt")
     private int packageNumber;
+
+    /**
+     * 蓝牙信号强度
+     */
+    @JSONField(name = "ble_rssi")
+    private int bleRssi;
+
+    /**
+     * wifi信号强度
+     */
+    @JSONField(name = "wifi_rssi")
+    private int wifiRssi;
 
     public String getHardVersion() {
         return hardVersion;
@@ -79,8 +94,11 @@ public class DockerDataBean {
                 ", hardVersion='" + hardVersion + '\'' +
                 ", battery=" + battery +
                 ", rawTemp=" + rawTemp +
+                ", bleRssi=" + bleRssi +
+                ", wifiRssi=" + wifiRssi +
                 '}';
     }
+
 
     public String getMacaddress() {
         return Utils.parseBssid2Mac(macaddress);
@@ -122,6 +140,15 @@ public class DockerDataBean {
         this.algorithmStatus = algorithmStatus;
     }
 
+
+    public int getAlgorithmGesture() {
+        return algorithmGesture;
+    }
+
+    public void setAlgorithmGesture(int algorithmGesture) {
+        this.algorithmGesture = algorithmGesture;
+    }
+
     public int getPercent() {
         return percent;
     }
@@ -136,5 +163,21 @@ public class DockerDataBean {
 
     public void setPackageNumber(int packageNumber) {
         this.packageNumber = packageNumber;
+    }
+
+    public int getBleRssi() {
+        return bleRssi;
+    }
+
+    public void setBleRssi(int bleRssi) {
+        this.bleRssi = bleRssi;
+    }
+
+    public int getWifiRssi() {
+        return wifiRssi;
+    }
+
+    public void setWifiRssi(int wifiRssi) {
+        this.wifiRssi = wifiRssi;
     }
 }

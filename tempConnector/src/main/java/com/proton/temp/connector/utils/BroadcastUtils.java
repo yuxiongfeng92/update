@@ -146,7 +146,12 @@ public class BroadcastUtils {
      * @param scanRecord 广播包
      */
     public static DeviceType parseDeviceType(byte[] scanRecord) {
+
         DeviceType type = DeviceType.None;
+
+        if (scanRecord == null || scanRecord.length < 3) {
+            return type;
+        }
 
         byte[] data = new byte[2];
         if (isBroadcast(scanRecord)) {
@@ -173,8 +178,29 @@ public class BroadcastUtils {
             type = DeviceType.P07;
         } else if (typeInt == Integer.parseInt("0602", 16)) {
             type = DeviceType.P08;
+        } else if (typeInt == Integer.parseInt("0802", 16)) {
+            //儿童医院的体温贴0802(p10)
+            type = DeviceType.P10;
+        } else if (typeInt == Integer.parseInt("0902", 16)) {
+            //过滤掉p11的贴
+            type = DeviceType.P11;
         }
         return type;
+    }
+
+    /**
+     * 判断是否是iBeacon设备
+     *
+     * @return
+     */
+    public static boolean isIBeaconDevice(byte[] scanRecord) {
+        if (scanRecord[5] == 0x4C && scanRecord[6] == 0x00 && scanRecord[7] == 0x02 && scanRecord[8] == 0x15) {
+            //这是一个iBeacon设备。
+            //注意这里004C的判断，在广播里厂商id这2个字节的数据是颠倒的
+            int tempLow = Integer.parseInt(Objects.requireNonNull(BleUtils.bytesToHexString(new byte[]{scanRecord[34]})), 16);
+            return true;
+        }
+        return false;
     }
 
     /**

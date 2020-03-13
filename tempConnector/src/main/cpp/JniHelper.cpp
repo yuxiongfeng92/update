@@ -3,7 +3,7 @@
 extern "C" {
 JNIEXPORT void JNICALL
 Java_com_proton_temp_connector_mqtt_MQTTManager_initDefaultMQTTConfig(JNIEnv *env,
-                                                                      jobject instance) {
+                                                                      jclass instance) {
     jclass configClass = env->FindClass("com/proton/temp/connector/bean/MQTTConfig");
     jmethodID configClint = env->GetMethodID(configClass, "<init>", "()V");
     jobject configObj = env->NewObject(configClass, configClint);

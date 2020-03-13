@@ -5,6 +5,7 @@ import android.os.Looper;
 
 import com.proton.temp.connector.bean.DeviceBean;
 import com.proton.temp.connector.bean.DeviceType;
+import com.proton.temp.connector.bluetooth.utils.BleUtils;
 import com.proton.temp.connector.interfaces.ConnectStatusListener;
 import com.proton.temp.connector.interfaces.Connector;
 import com.proton.temp.connector.interfaces.DataListener;
@@ -25,7 +26,6 @@ import java.util.TimerTask;
  * 广播方式连接
  */
 public class BroadcastConnector implements Connector {
-
     private String macaddress;
     private ConnectStatusListener connectStatusListener = new ConnectStatusListener() {
         @Override
@@ -42,6 +42,10 @@ public class BroadcastConnector implements Connector {
     private boolean isCharge = true;
     private Timer mConnectStatusTimer;
     private Timer mCheckDeviceOpenTimer;
+    /**
+     * 从第二次开始接收数据的时候开始检测体温贴是否断裂
+     */
+    private boolean isFirstCheckPatchEnable = true;
     /**
      * 上次收到数据的时间
      */
@@ -67,11 +71,11 @@ public class BroadcastConnector implements Connector {
             DeviceType type = BroadcastUtils.parseDeviceType(result.getScanRecord());
             if (type != DeviceType.None) {
                 String deviceName = result.getDevice().getName();
-                DeviceBean deviceBean = new DeviceBean(result.getDevice().getAddress(), type, BroadcastUtils.getHardVersionByBroadcast(result.getScanRecord()));
+                DeviceBean deviceBean = new DeviceBean(result.getDevice().getAddress(), type, BroadcastUtils.getHardVersionByBroadcast(result.getScanRecord()), result.getRssi());
                 if ("OAD THEM".equals(deviceName)) {
                     deviceBean.setNeedUpdate(result.getDevice().getName().equalsIgnoreCase("OAD THEM"));
                 }
-                doDeviceFound(result.getScanRecord());
+                doDeviceFound(result.getScanRecord(), result.getRssi());
             }
         }
     };
@@ -86,7 +90,7 @@ public class BroadcastConnector implements Connector {
         ScanManager.getInstance().scan(mScanCallback, Integer.MAX_VALUE);
     }
 
-    private void doDeviceFound(byte[] scanRecord) {
+    private void doDeviceFound(byte[] scanRecord, int bleRssi) {
         if (macaddress.equalsIgnoreCase(BroadcastUtils.getMacaddressByBroadcastNew(scanRecord))) {
             mLastReceiveDataTime = System.currentTimeMillis();
             if (!hasCallbackConnectSuccess) {
@@ -113,6 +117,11 @@ public class BroadcastConnector implements Connector {
             //温度
             dataListener.receiveCurrentTemp(BroadcastUtils.getTempByBroadcast(scanRecord, mLastPackageNumber));
 
+            if (!isFirstCheckPatchEnable) {
+                dataListener.judgeCarepatchEnable(judgeCarepatchEnableByBroadcast(scanRecord));
+            }
+            isFirstCheckPatchEnable = false;
+
             //电量
             int bat = BroadcastUtils.getBattery(scanRecord);
             if (battery != bat) {
@@ -125,7 +134,39 @@ public class BroadcastConnector implements Connector {
                 isCharge = charge;
                 dataListener.receiveCharge(isCharge);
             }
+
+            dataListener.receiveBleAndWifiRssi(bleRssi, 0);
+
         }
+    }
+
+    /**
+     * 判断体温贴是否断裂(广播方式判断体温贴是否断裂  看温度值是否是0xffff)
+     */
+    public static boolean judgeCarepatchEnableByBroadcast(byte[] scanRecord) {
+        if (scanRecord.length < 15) {
+            return true;
+        }
+
+        byte[] firstTemp = new byte[2];
+        firstTemp[0] = scanRecord[11];
+        firstTemp[1] = scanRecord[10];
+
+        byte[] secondTemp = new byte[2];
+        secondTemp[0] = scanRecord[13];
+        secondTemp[1] = scanRecord[12];
+
+        byte[] thirdTemp = new byte[2];
+        thirdTemp[0] = scanRecord[15];
+        thirdTemp[1] = scanRecord[14];
+
+        String first = BleUtils.bytesToHexString(firstTemp);
+        String second = BleUtils.bytesToHexString(secondTemp);
+        String third = BleUtils.bytesToHexString(thirdTemp);
+        if (first.equalsIgnoreCase("ffff") && second.equalsIgnoreCase("ffff") && third.equalsIgnoreCase("ffff")) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -137,6 +178,7 @@ public class BroadcastConnector implements Connector {
         mCheckDeviceOpenTimer.schedule(new TimerTask() {
             @Override
             public void run() {
+                if (mCheckDeviceOpenTimer == null) return;
                 if (System.currentTimeMillis() - startTime > connectTimeout && !hasCallbackConnectSuccess) {
                     mCheckDeviceOpenTimer.cancel();
                     mainHandler.post(new Runnable() {
@@ -159,6 +201,7 @@ public class BroadcastConnector implements Connector {
         mConnectStatusTimer.schedule(new TimerTask() {
             @Override
             public void run() {
+                if (mConnectStatusTimer == null) return;
                 Logger.w("广播连接状态定时器");
                 if ((mLastReceiveDataTime != 0 && System.currentTimeMillis() - mLastReceiveDataTime >= disconnectTimeout)
                         || !BluetoothUtils.isBluetoothOpened()) {

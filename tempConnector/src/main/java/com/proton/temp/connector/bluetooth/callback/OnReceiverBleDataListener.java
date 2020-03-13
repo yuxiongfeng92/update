@@ -51,4 +51,12 @@ public abstract class OnReceiverBleDataListener {
      */
     public void onReadCacheFinish() {
     }
+
+    /**
+     * 判断体温贴是否断裂
+     * @param isEnable
+     */
+    public void judgeCarepatchEnable(boolean isEnable){
+
+    }
 }

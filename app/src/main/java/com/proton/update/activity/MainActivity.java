@@ -75,7 +75,7 @@ public class MainActivity extends BaseActivity<ActivityMainBinding> {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         binding.idRecyclerview.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
-        initRefreshLayout(binding.idRefreshLayout, refreshlayout -> {
+        initRefreshLayout(binding.idRefreshLayout, refresh -> {
             scanDevice();
         }, null);
         mAdapter = new CommonAdapter<DeviceBean>(this, mDeviceList, R.layout.item_device) {
